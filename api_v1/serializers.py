@@ -48,18 +48,23 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         return new_courier
 
 
+class CourierData:
+    def __init__(self, data):
+        self.couriers = data
+
+
 class CourierDataSerializer(serializers.Serializer):
-    data = CourierCreateSerializer(many=True)
+    data = CourierCreateSerializer(many=True, write_only=True)
+    couriers = CourierCreateSerializer(many=True, read_only=True)
 
     class Meta:
         fields = ('data',)
 
     def create(self, validated_data):
-        couriers = validated_data.pop('data')
-        for courier_data in couriers:
-            regions_data = courier_data.pop('regions')
-            workhours_data = courier_data.pop('working_hours')
-            new_courier = Courier.objects.create(**courier_data)
-        return
-
-
+        serializer = CourierCreateSerializer(
+            data=validated_data['data'],
+            many=True,
+        )
+        if serializer.is_valid(raise_exception=True):
+            couriers = serializer.save()
+        return CourierData(couriers)
