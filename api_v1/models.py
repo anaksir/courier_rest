@@ -5,7 +5,7 @@ class Region(models.Model):
     region_id = models.PositiveSmallIntegerField(primary_key=True)
 
     def __str__(self):
-        return self.region_id
+        return f'{self.region_id}'
 
 
 class WorkingHour(models.Model):
@@ -22,8 +22,8 @@ class Courier(models.Model):
         BIKE = 'bike'
         CAR = 'car'
 
-    id = models.PositiveSmallIntegerField(primary_key=True)
-    transport = models.CharField(
+    courier_id = models.PositiveSmallIntegerField(primary_key=True)
+    courier_type = models.CharField(
         max_length=4,
         choices=Transport.choices,
     )

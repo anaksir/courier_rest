@@ -1,12 +1,13 @@
 from django.urls import include, path
 from rest_framework import routers
-from slasty.api_v1 import views
+from . import views
 
 
 router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'couriers', views.CouriersViewSet)
 
 urlpatterns = [
+    path('new_couriers', views.NewCouriers.as_view()),
     path('couriers_old', views.couriers),
     path('', include(router.urls)),
 ]
