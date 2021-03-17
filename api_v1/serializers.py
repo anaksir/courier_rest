@@ -50,12 +50,11 @@ class CourierCreateSerializer(serializers.ModelSerializer):
 
 class CourierData:
     def __init__(self, data):
-        self.couriers = data
+        self.data = data
 
 
 class CourierDataSerializer(serializers.Serializer):
-    data = CourierCreateSerializer(many=True, write_only=True)
-    couriers = CourierCreateSerializer(many=True, read_only=True)
+    data = CourierCreateSerializer(many=True)
 
     class Meta:
         fields = ('data',)
@@ -67,4 +66,10 @@ class CourierDataSerializer(serializers.Serializer):
         )
         if serializer.is_valid(raise_exception=True):
             couriers = serializer.save()
-        return CourierData(couriers)
+        return CourierData(**validated_data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        couriers = data.pop('data')
+        data['couriers'] = couriers
+        return data
