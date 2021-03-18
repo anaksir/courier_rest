@@ -11,15 +11,15 @@ from .serializers import (
 
 class CouriersViewSet(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
-    serializer_class = CourierDataSerializer
+    serializer_class = CourierCreateSerializer
 
-    # @action(methods=['post'], detail=False)
-    # def multiple_create(self, request):
-    #     print(request.data)
-    #     serializer = self.get_serializer(data=request.data['data'], many=True)
-    #     serializer.is_valid(raise_exception=True)
-    #     self.perform_create(serializer)
-    #     return Response({'couriers': serializer.data}, status=status.HTTP_201_CREATED)
+    @action(methods=['post'], detail=False)
+    def multiple_create(self, request):
+        print(request.data)
+        serializer = self.get_serializer(data=request.data['data'], many=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response({'couriers': serializer.data}, status=status.HTTP_201_CREATED)
 
     # def create(self, request, *args, **kwargs):
     #     serializer = self.get_serializer(data=request.data)
