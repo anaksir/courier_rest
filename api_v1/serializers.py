@@ -28,21 +28,22 @@ class CourierSerializer(serializers.ModelSerializer):
 class CourierCreateSerializer(serializers.ModelSerializer):
     """
     Сериализатор для создания курьера.
-    Использует разные названия полей для серализаии и десераилизации
+    Использует разные названия полей для серализаии и десериализации
     """
     working_hours = serializers.ListField(
         child=serializers.CharField(max_length=11),
-        write_only=True
+        write_only=True,
+        label='List of courier working hours'
     )
     regions = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         write_only=True
     )
 
-    courier_id = serializers.IntegerField(
+    id = serializers.IntegerField(
         min_value=1,
-        source='id',
-        write_only=True
+        source='courier_id',
+        read_only=True,
     )
 
     class Meta:
@@ -50,7 +51,7 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         fields = ('courier_id', 'courier_type', 'working_hours', 'regions', 'id')
         extra_kwargs = {
             'courier_type': {'write_only': True},
-            'id': {'read_only': True},
+            'courier_id': {'write_only': True, 'min_value': 1},
         }
 
     # def create(self, validated_data):
@@ -83,7 +84,9 @@ class CourierDataSerializer(serializers.Serializer):
             workhours_data = courier_data.pop('working_hours')
             new_courier = Courier.objects.create(**courier_data)
             couriers.append(new_courier)
-        return {'data': couriers}
+        print('couriers')
+        print(couriers)
+        return {'couriers': couriers}
 
     # def to_representation(self, instance):
     #     data = super().to_representation(instance)
