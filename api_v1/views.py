@@ -8,6 +8,9 @@ from .serializers import (
     CourierSerializer, CourierDataSerializer, CourierCreateSerializer
 )
 
+from .models import Item
+from .serializers import ItemDataSerializer
+
 
 class CouriersViewSet(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
@@ -55,3 +58,8 @@ class NewCouriers(CreateAPIView):
 @api_view()
 def couriers(request):
     return Response({"message": "Hello, world!"})
+
+
+class ItemsViewSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all()
+    serializer_class = ItemDataSerializer

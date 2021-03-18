@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Courier, WorkingHour, Region
+from .models import Item
 
 
 class CourierSerializer(serializers.ModelSerializer):
@@ -73,3 +74,28 @@ class CourierDataSerializer(serializers.Serializer):
         couriers = data.pop('data')
         data['couriers'] = couriers
         return data
+
+
+class ItemCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Item
+        fields = ('item_name', 'item_price', 'id')
+        extra_kwargs = {
+            'id': {'read_only': True},
+            'item_name': {'write_only': True},
+            'item_price': {'write_only': True},
+        }
+
+
+class ItemDataSerializer(serializers.Serializer):
+    items_data = ItemCreateSerializer(many=True)
+
+    class Meta:
+        fields = ('items_data',)
+
+    def create(self, validated_data):
+        items = validated_data.pop('items_data')
+        # for item_data in items:
+        #     Item.objects.create(**item_data)
+        created_items = (Item.objects.create(**item_data) for item_data in items)
+        return {'items_data': created_items}

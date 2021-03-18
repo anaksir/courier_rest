@@ -30,3 +30,9 @@ class Courier(models.Model):
 
     regions = models.ManyToManyField(Region)
     working_hours = models.ManyToManyField(WorkingHour)
+
+
+class Item(models.Model):
+
+    item_price = models.PositiveIntegerField()
+    item_name = models.CharField(max_length=100)
