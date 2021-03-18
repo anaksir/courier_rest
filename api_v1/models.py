@@ -22,7 +22,7 @@ class Courier(models.Model):
         BIKE = 'bike'
         CAR = 'car'
 
-    courier_id = models.PositiveSmallIntegerField(primary_key=True)
+    id = models.PositiveIntegerField(primary_key=True,)
     courier_type = models.CharField(
         max_length=4,
         choices=Transport.choices,

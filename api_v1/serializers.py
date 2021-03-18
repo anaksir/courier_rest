@@ -4,6 +4,9 @@ from .models import Item
 
 
 class CourierSerializer(serializers.ModelSerializer):
+    """
+    Тестовый
+    """
     # working_hours = serializers.SlugRelatedField(
     #     many=True,
     #     slug_field='interval',
@@ -23,6 +26,10 @@ class CourierSerializer(serializers.ModelSerializer):
 
 
 class CourierCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания курьера.
+    Использует разные названия полей для серализаии и десераилизации
+    """
     working_hours = serializers.ListField(
         child=serializers.CharField(max_length=11),
         write_only=True
@@ -32,48 +39,57 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
-    id = serializers.IntegerField(source='courier_id', read_only=True)
+    courier_id = serializers.IntegerField(
+        min_value=1,
+        source='id',
+        write_only=True
+    )
 
     class Meta:
         model = Courier
         fields = ('courier_id', 'courier_type', 'working_hours', 'regions', 'id')
         extra_kwargs = {
             'courier_type': {'write_only': True},
-            'courier_id': {'write_only': True},
+            'id': {'read_only': True},
         }
 
-    def create(self, validated_data):
-        regions_data = validated_data.pop('regions')
-        workhours_data = validated_data.pop('working_hours')
-        new_courier = Courier.objects.create(**validated_data)
-        return new_courier
+    # def create(self, validated_data):
+    #     regions_data = validated_data.pop('regions')
+    #     workhours_data = validated_data.pop('working_hours')
+    #     new_courier = Courier.objects.create(**validated_data)
+    #     return new_courier
 
 
-class CourierData:
-    def __init__(self, data):
-        self.data = data
+# class CourierData:
+#     def __init__(self, data):
+#         self.data = data
 
 
 class CourierDataSerializer(serializers.Serializer):
-    data = CourierCreateSerializer(many=True)
+    """
+    Сериализатор для с приема вложенного json с ключем 'data',
+    в котором содержится спискок параметров курьеров
+    """
+    data = CourierCreateSerializer(many=True, write_only=True)
+    couriers = CourierCreateSerializer(many=True, read_only=True)
 
     class Meta:
-        fields = ('data',)
+        fields = ('data', 'couriers')
 
     def create(self, validated_data):
-        serializer = CourierCreateSerializer(
-            data=validated_data['data'],
-            many=True,
-        )
-        if serializer.is_valid(raise_exception=True):
-            couriers = serializer.save()
-        return CourierData(**validated_data)
+        couriers = []
+        for courier_data in validated_data['data']:
+            regions_data = courier_data.pop('regions')
+            workhours_data = courier_data.pop('working_hours')
+            new_courier = Courier.objects.create(**courier_data)
+            couriers.append(new_courier)
+        return {'data': couriers}
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        couriers = data.pop('data')
-        data['couriers'] = couriers
-        return data
+    # def to_representation(self, instance):
+    #     data = super().to_representation(instance)
+    #     couriers = data.pop('data')
+    #     data['couriers'] = couriers
+    #     return data
 
 
 class ItemCreateSerializer(serializers.ModelSerializer):
