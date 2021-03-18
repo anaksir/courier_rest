@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from .models import Courier, WorkingHour, Region
 from .models import Item
 
@@ -33,11 +34,12 @@ class CourierCreateSerializer(serializers.ModelSerializer):
     working_hours = serializers.ListField(
         child=serializers.CharField(max_length=11),
         write_only=True,
-        label='List of courier working hours'
+        help_text="List of courier's working hours"
     )
     regions = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
-        write_only=True
+        write_only=True,
+        help_text="List of courier's working regions"
     )
 
     id = serializers.IntegerField(
@@ -50,15 +52,35 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         model = Courier
         fields = ('courier_id', 'courier_type', 'working_hours', 'regions', 'id')
         extra_kwargs = {
-            'courier_type': {'write_only': True},
-            'courier_id': {'write_only': True, 'min_value': 1},
+            'courier_type': {
+                'write_only': True,
+                'help_text': 'Transport for the courier, may be either foot, bike or car'
+            },
+            'courier_id': {
+                'write_only': True,
+                'min_value': 1,
+                'help_text': 'Unique ID for courier, must be integer > 0',
+            },
         }
+
+    def to_internal_value(self, data):
+        """
+        Переопределяем метод, чтобы в слуае возникновения любых ошибок
+        валидации вернуть id записей, не прошедших проверку.
+        """
+        try:
+            ret = super().to_internal_value(data)
+        except ValidationError:
+            raise ValidationError({'id': data['courier_id']})
+
+        return ret
 
     # def create(self, validated_data):
     #     regions_data = validated_data.pop('regions')
     #     workhours_data = validated_data.pop('working_hours')
     #     new_courier = Courier.objects.create(**validated_data)
     #     return new_courier
+
 
 
 # class CourierData:
@@ -84,8 +106,6 @@ class CourierDataSerializer(serializers.Serializer):
             workhours_data = courier_data.pop('working_hours')
             new_courier = Courier.objects.create(**courier_data)
             couriers.append(new_courier)
-        print('couriers')
-        print(couriers)
         return {'couriers': couriers}
 
     # def to_representation(self, instance):
