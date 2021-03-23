@@ -2,7 +2,7 @@ from rest_framework import serializers
 # from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Courier, TimeInterval, Region
+from .models import Courier, TimeInterval, Region, Order
 from django.core.exceptions import ObjectDoesNotExist
 from drf_writable_nested.serializers import WritableNestedModelSerializer
 
@@ -91,12 +91,6 @@ class CourierDataSerializer(serializers.Serializer):
         return {'couriers': couriers}
 
 
-class RegionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Region
-        fields = ('region_id',)
-
-
 class CourierUpdateSerializer(serializers.ModelSerializer):
     regions = RegionRelatedField(
         many=True,
@@ -123,3 +117,47 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
                 'read_only': True,
             },
         }
+
+
+class OrderCreateSerializer(serializers.ModelSerializer):
+    order_id = serializers.IntegerField(
+        min_value=1,
+        validators=[UniqueValidator(queryset=Order.objects.all)],
+        write_only=True
+    )
+
+    region = RegionRelatedField(
+        queryset=Region.objects.all(),
+        write_only=True,
+    )
+
+    delivery_hours = TimeIntervalRelatedField(
+        many=True,
+        slug_field='interval',
+        queryset=TimeInterval.objects.all(),
+        write_only=True,
+    )
+
+    class Meta:
+        model = Order
+        fields = (
+            'order_id',
+            'weight',
+            'region',
+            'delivery_hours',
+            'id',
+        )
+
+        extra_kwargs = {
+            'weight': {
+                'write_only': True,
+            },
+            'id': {
+                'read_only': True,
+            },
+        }
+
+
+class OrderDataSerializer(serializers.Serializer):
+    data = OrderCreateSerializer(many=True, write_only=True)
+    orders = OrderCreateSerializer(many=True, read_only=True)

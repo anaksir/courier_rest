@@ -1,15 +1,16 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from rest_framework import viewsets, status
-from rest_framework.views import APIView
-from rest_framework.generics import CreateAPIView
-from .models import Courier
+from .models import Courier, Order
 from .serializers import (
-    CourierDataSerializer, CourierUpdateSerializer)
+    CourierDataSerializer, CourierUpdateSerializer,
+    OrderDataSerializer
+)
 
 
 class CouriersViewSet(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
+    http_method_names = ['post', 'patch']
 
     def get_serializer_class(self):
         """
@@ -36,3 +37,10 @@ class CouriersViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_201_CREATED,
                 headers=headers
             )
+
+
+class OrdersViewSet(viewsets.ModelViewSet):
+    http_method_names = ['post']
+    queryset = Order.objects.all()
+    serializer_class = OrderDataSerializer
+
