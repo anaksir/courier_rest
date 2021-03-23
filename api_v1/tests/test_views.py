@@ -1,6 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework.response import Response
 from ..models import Courier
 
 
@@ -73,11 +74,11 @@ class CouriersTests(APITestCase):
             "validation_error": {
                 "couriers": [
                     {"id": 1},
-                    {"id": 2},
+                    {"id": "foo"},
                 ]
             }
         }
 
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, response_data)
+        self.assertEqual(response.data, Response(response_data).data)

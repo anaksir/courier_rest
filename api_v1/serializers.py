@@ -1,29 +1,11 @@
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-from .models import Courier, WorkingHour, Region
+# from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
+from rest_framework.utils.serializer_helpers import ReturnDict
+from .models import Courier, TimeInterval, Region
 from .models import Item
-
-
-class CourierSerializer(serializers.ModelSerializer):
-    """
-    Тестовый
-    """
-    # working_hours = serializers.SlugRelatedField(
-    #     many=True,
-    #     slug_field='interval',
-    #     queryset=WorkingHour.objects.all()
-    # )
-
-    regions = serializers.ListField(child=serializers.IntegerField())
-
-    class Meta:
-        model = Courier
-        fields = ('courier_id', 'courier_type', 'regions')
-
-    #
-    # def to_internal_value(self, data):
-    #     print(data)
-    #     return 'OK'
+from django.core.exceptions import ObjectDoesNotExist
+from drf_writable_nested.serializers import WritableNestedModelSerializer
 
 
 class CourierCreateSerializer(serializers.ModelSerializer):
@@ -70,8 +52,10 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         """
         try:
             ret = super().to_internal_value(data)
-        except ValidationError:
-            raise ValidationError({'id': data['courier_id']})
+        except serializers.ValidationError as exc:
+            print(exc.detail)
+            print(data['courier_id'])
+            raise serializers.ValidationError(data['courier_id'])
 
         return ret
 
@@ -82,10 +66,76 @@ class CourierCreateSerializer(serializers.ModelSerializer):
     #     return new_courier
 
 
+class CourierUpdateSerializer(serializers.ModelSerializer):
 
-# class CourierData:
-#     def __init__(self, data):
-#         self.data = data
+    working_hours = serializers.StringRelatedField(many=True, read_only=False)
+    regions = serializers.ListField(write_only=True)
+
+    class Meta:
+        model = Courier
+        fields = ('courier_id', 'courier_type', 'working_hours', 'regions')
+        extra_kwargs = {
+            'courier_id': {'read_only': True},
+            'regions': {'validators': []},
+        }
+
+    def validate(self, attrs):
+        unknown = set(self.initial_data) - set(self.fields)
+        if unknown:
+            raise serializers.ValidationError(
+                f'Unknown field(s): {", ".join(unknown)}'
+            )
+        return attrs
+
+
+class CustomRegionsRelatedField(serializers.PrimaryKeyRelatedField):
+    def to_internal_value(self, data):
+        if self.pk_field is not None:
+            data = self.pk_field.to_internal_value(data)
+        queryset = self.get_queryset()
+        try:
+            ret, _ = queryset.get_or_create(pk=data)
+            return ret
+        except ObjectDoesNotExist:
+            self.fail('does_not_exist', pk_value=data)
+        except (TypeError, ValueError):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+
+
+class NewTestCourierUpdateSerializer(serializers.ModelSerializer):
+    regions = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Region.objects.all()
+    )
+    working_hours = serializers.SlugRelatedField(
+        many=True,
+        slug_field='interval',
+        queryset=TimeInterval.objects.all()
+    )
+
+    class Meta:
+        model = Courier
+        fields = ('courier_id', 'courier_type', 'working_hours', 'regions')
+        extra_kwargs = {
+            'courier_id': {'read_only': True},
+        }
+
+    def update(self, instance, validated_data):
+        return instance
+
+
+class TestCustomRelatedCourierUpdateSerializer(serializers.ModelSerializer):
+    regions = CustomRegionsRelatedField(
+        many=True,
+        queryset=Region.objects.all()
+    )
+
+    class Meta:
+        model = Courier
+        fields = ('courier_id', 'courier_type', 'working_hours', 'regions')
+        extra_kwargs = {
+            'courier_id': {'read_only': True},
+        }
 
 
 class CourierDataSerializer(serializers.Serializer):
@@ -105,6 +155,22 @@ class CourierDataSerializer(serializers.Serializer):
             regions_data = courier_data.pop('regions')
             workhours_data = courier_data.pop('working_hours')
             new_courier = Courier.objects.create(**courier_data)
+            regions = (
+                Region.objects.get_or_create(region_id=region)[0]
+                for region in regions_data
+            )
+            new_courier.regions.add(*regions)
+
+            work_hours = []
+            for interval in workhours_data:
+                start, end = interval.split('-')
+                new_working_hour, _ = TimeInterval.objects.get_or_create(
+                    start=start,
+                    end=end,
+                )
+                work_hours.append(new_working_hour)
+            new_courier.working_hours.add(*work_hours)
+
             couriers.append(new_courier)
         return {'couriers': couriers}
 
@@ -116,14 +182,39 @@ class CourierDataSerializer(serializers.Serializer):
 
 
 class ItemCreateSerializer(serializers.ModelSerializer):
+    item_id = serializers.IntegerField(
+        min_value=1,
+        write_only=True,
+        source='id',
+    )
+
+    item_name = serializers.CharField(
+        source='name',
+        write_only=True,
+    )
+
+    item_quantity = serializers.IntegerField(
+        required=True,
+        min_value=1,
+        write_only=True,
+        source='quantity'
+    )
+
     class Meta:
         model = Item
-        fields = ('item_name', 'item_price', 'id')
+        fields = ('item_id', 'item_name', 'item_quantity', 'id')
         extra_kwargs = {
             'id': {'read_only': True},
-            'item_name': {'write_only': True},
-            'item_price': {'write_only': True},
         }
+
+    def to_internal_value(self, data):
+        try:
+            ret = super().to_internal_value(data)
+        except serializers.ValidationError as exc:
+            print(exc)
+            raise serializers.ValidationError({'id': data['item_id']})
+
+        return ret
 
 
 class ItemDataSerializer(serializers.Serializer):
