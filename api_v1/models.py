@@ -53,9 +53,3 @@ class Order(models.Model):
     )
     delivery_hours = models.ManyToManyField(TimeInterval)
 
-
-class Item(models.Model):
-
-    id = models.PositiveIntegerField(primary_key=True)
-    name = models.CharField(max_length=100)
-    quantity = models.PositiveIntegerField(default=0)
