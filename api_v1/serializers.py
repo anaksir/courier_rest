@@ -122,13 +122,14 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
 class OrderCreateSerializer(serializers.ModelSerializer):
     order_id = serializers.IntegerField(
         min_value=1,
-        validators=[UniqueValidator(queryset=Order.objects.all)],
-        write_only=True
+        validators=[UniqueValidator(queryset=Order.objects.all())],
+        write_only=True,
+        source='id'
     )
 
     region = RegionRelatedField(
         queryset=Region.objects.all(),
-        write_only=True,
+        write_only=True
     )
 
     delivery_hours = TimeIntervalRelatedField(
@@ -151,6 +152,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'weight': {
                 'write_only': True,
+                'min_value': 0.009,
+                'max_value': 50,
             },
             'id': {
                 'read_only': True,
@@ -161,3 +164,27 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 class OrderDataSerializer(serializers.Serializer):
     data = OrderCreateSerializer(many=True, write_only=True)
     orders = OrderCreateSerializer(many=True, read_only=True)
+
+    def create(self, validated_data):
+        print('-'*80)
+        print(validated_data)
+        orders = []
+        for order_data in validated_data['data']:
+            delivery_hours = order_data.pop('delivery_hours')
+            new_order = Order.objects.create(**order_data)
+            new_order.delivery_hours.add(*delivery_hours)
+            orders.append(new_order)
+
+        return {'orders': orders}
+
+
+class OrderAssignSerializer(serializers.Serializer):
+    courier_id = serializers.PrimaryKeyRelatedField(
+        queryset=Courier.objects.all(),
+        write_only=True,
+    )
+    orders = OrderCreateSerializer(
+        many=True,
+        read_only=True
+    )
+    assign_time = serializers.DateTimeField()
