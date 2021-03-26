@@ -50,22 +50,39 @@ class OrdersViewSet(viewsets.ModelViewSet):
         serializers = {
             'create': OrderDataSerializer,
             'assign': OrderAssignSerializer,
+            'complete': ...
         }
 
         return serializers.get(self.action, OrderDataSerializer)
 
     @action(methods=['post'], detail=False)
     def assign(self, request, *args, **kwargs):
+        """
+        Endpoint для назначения курьеру подходящих заказов
+        """
         print(self.action)
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            print(serializer)
-            # self.perform_create(serializer)
-            # headers = self.get_success_headers(serializer.data)
-            # return Response(
-            #     serializer.data,
-            #     status=status.HTTP_201_CREATED,
-            #     headers=headers
-            # )
-        return Response({'111': 'OK'})
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK,
+                headers=headers
+            )
 
+    @action(methods=['post'], detail=False)
+    def complete(self, request):
+        """
+        Endpoint для отметки о выполнении заказа
+        """
+        print(self.action)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers
+            )

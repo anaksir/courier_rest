@@ -2,9 +2,14 @@ from rest_framework import serializers
 # from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Courier, TimeInterval, Region, Order
+from .models import Courier, TimeInterval, Region, Order, OrderAssign
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 from drf_writable_nested.serializers import WritableNestedModelSerializer
+import datetime
+from functools import reduce
+import operator
+from django.utils import timezone
 
 
 class RegionRelatedField(serializers.PrimaryKeyRelatedField):
@@ -166,8 +171,6 @@ class OrderDataSerializer(serializers.Serializer):
     orders = OrderCreateSerializer(many=True, read_only=True)
 
     def create(self, validated_data):
-        print('-'*80)
-        print(validated_data)
         orders = []
         for order_data in validated_data['data']:
             delivery_hours = order_data.pop('delivery_hours')
@@ -178,13 +181,100 @@ class OrderDataSerializer(serializers.Serializer):
         return {'orders': orders}
 
 
+class AssignedOrderSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для назначенных заказов,
+    используется в OrderAssignSerializer
+    """
+    id = serializers.IntegerField(
+        source='order_id',
+        read_only=True
+    )
+
+    class Meta:
+        model = OrderAssign
+        fields = ('id',)
+
+
 class OrderAssignSerializer(serializers.Serializer):
     courier_id = serializers.PrimaryKeyRelatedField(
         queryset=Courier.objects.all(),
         write_only=True,
     )
-    orders = OrderCreateSerializer(
+    orders = AssignedOrderSerializer(
         many=True,
         read_only=True
     )
-    assign_time = serializers.DateTimeField()
+    assign_time = serializers.DateTimeField(
+        read_only=True,
+        required=False
+    )
+
+    class Meta:
+        fields = (
+            'courier_id',
+            'orders',
+            'assign_time',
+        )
+
+    def create(self, validated_data):
+        """
+        Назначает заказы курьеру
+        """
+        courier_max_weight = {
+            'foot': 10,
+            'bike': 15,
+            'car': 50
+        }
+
+        courier = validated_data.pop('courier_id')
+        courier_working_hours = courier.working_hours.all()
+
+        # Вариант 2 как сделать фильтр по времени:
+        # suitable_orders = Order.objects.none()
+        # for interval in courier_working_hours:
+        #     suitable_orders |= Order.objects.filter(
+        #         Q(region__in=courier.regions.all()),
+        #         Q(is_assigned=False),
+        #         Q(weight__lte=courier_max_weight[courier.courier_type]),
+        #         Q(delivery_hours__start__lt=interval.end) &
+        #         Q(delivery_hours__end__gt=interval.start)
+        #     )
+
+        time_conditions = []
+        # Проходим по всем интервалам работы курьера и формируем условия:
+        for interval in courier_working_hours:
+            time_conditions.append(
+                Q(
+                    Q(delivery_hours__start__lt=interval.end) &
+                    Q(delivery_hours__end__gt=interval.start)
+                )
+            )
+        # Затем по условиям фильтруем заказы
+        suitable_orders = Order.objects.filter(
+            Q(region__in=courier.regions.all()),
+            Q(is_assigned=False),
+            Q(weight__lte=courier_max_weight[courier.courier_type]),
+            reduce(operator.or_, time_conditions)
+        )
+        assigned_orders = []
+        assign_time = timezone.now()
+        # В цикле проходим по подходящим заказам,
+        # создаем новый объект OrderAssign
+        for order in suitable_orders:
+            new_assigned_order = OrderAssign.objects.create(
+                courier=courier,
+                order=order,
+                assign_time=assign_time
+
+            )
+            assigned_orders.append(new_assigned_order)
+
+        suitable_orders.update(is_assigned=True)
+        result = {'orders': assigned_orders}
+        # Если заказы назначены, в ответ добавить время назначения
+        if assigned_orders:
+            result.update(assign_time=assign_time)
+        return result
+
+
