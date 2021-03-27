@@ -4,13 +4,14 @@ from rest_framework import viewsets, status
 from .models import Courier, Order
 from .serializers import (
     CourierDataSerializer, CourierUpdateSerializer,
-    OrderDataSerializer, OrderAssignSerializer
+    OrderDataSerializer, OrderAssignSerializer, CompleteOrderSerializer,
+    CourierInfoSerializer
 )
 
 
 class CouriersViewSet(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
-    http_method_names = ['post', 'patch']
+    http_method_names = ['post', 'patch', 'get']
 
     def get_serializer_class(self):
         """
@@ -21,7 +22,7 @@ class CouriersViewSet(viewsets.ModelViewSet):
             'create': CourierDataSerializer,
             'update': CourierUpdateSerializer,
             'partial_update': CourierUpdateSerializer,
-            'retrieve': CourierDataSerializer,
+            'retrieve': CourierInfoSerializer,
         }
 
         return serializers.get(self.action, CourierDataSerializer)
@@ -50,7 +51,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
         serializers = {
             'create': OrderDataSerializer,
             'assign': OrderAssignSerializer,
-            'complete': ...
+            'complete': CompleteOrderSerializer,
         }
 
         return serializers.get(self.action, OrderDataSerializer)
@@ -83,6 +84,6 @@ class OrdersViewSet(viewsets.ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(
                 serializer.data,
-                status=status.HTTP_201_CREATED,
+                status=status.HTTP_200_OK,
                 headers=headers
             )

@@ -2,7 +2,7 @@ from rest_framework import serializers
 # from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Courier, TimeInterval, Region, Order, OrderAssign
+from .models import Courier, TimeInterval, Region, Order, AssignedOrder
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from drf_writable_nested.serializers import WritableNestedModelSerializer
@@ -10,9 +10,14 @@ import datetime
 from functools import reduce
 import operator
 from django.utils import timezone
+from django.db.models import Sum
 
 
 class RegionRelatedField(serializers.PrimaryKeyRelatedField):
+    """
+    Кастомное поле на основе PrimaryKeyRelatedField,
+    создает Region, если его еще не было в базе
+    """
     def to_internal_value(self, data):
         queryset = self.get_queryset()
         try:
@@ -24,6 +29,10 @@ class RegionRelatedField(serializers.PrimaryKeyRelatedField):
 
 
 class TimeIntervalRelatedField(serializers.SlugRelatedField):
+    """
+    Кастомное поле на основе SlugRelatedField,
+    создает TimeInterval, если его еще не было в базе
+    """
     def to_internal_value(self, data):
         queryset = self.get_queryset()
         try:
@@ -35,19 +44,18 @@ class TimeIntervalRelatedField(serializers.SlugRelatedField):
 
 
 class CourierCreateSerializer(serializers.ModelSerializer):
+
     regions = RegionRelatedField(
         many=True,
         queryset=Region.objects.all(),
         write_only=True,
     )
-
     working_hours = TimeIntervalRelatedField(
         many=True,
         slug_field='interval',
         queryset=TimeInterval.objects.all(),
         write_only=True,
     )
-
     id = serializers.IntegerField(
         source='courier_id',
         read_only=True,
@@ -66,7 +74,8 @@ class CourierCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'courier_type': {
                 'write_only': True,
-                'help_text': 'Transport for the courier, may be either foot, bike or car'
+                'help_text':
+                    'Transport for the courier, may be either foot, bike or car'
             },
             'courier_id': {
                 'write_only': True,
@@ -77,6 +86,11 @@ class CourierCreateSerializer(serializers.ModelSerializer):
 
 
 class CourierDataSerializer(serializers.Serializer):
+    """
+    Сериализатор для создания курьеров,
+    Данные о курьерах находятся в списке по ключу "data"
+    Возвращает список созданных курьеров в ключе "couriers"
+    """
     data = CourierCreateSerializer(many=True, write_only=True)
     couriers = CourierCreateSerializer(many=True, read_only=True)
 
@@ -97,6 +111,12 @@ class CourierDataSerializer(serializers.Serializer):
 
 
 class CourierUpdateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для обновления курьеров.
+    Возвращает актуальные данные.
+    В методе 'update' реализовано снятие с курьера заказов, которые ему
+    больше не подходят.
+    """
     regions = RegionRelatedField(
         many=True,
         queryset=Region.objects.all(),
@@ -122,6 +142,62 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
                 'read_only': True,
             },
         }
+
+    def update(self, instance, validated_data):
+        super().update(instance, validated_data)
+        courier_working_hours = instance.working_hours.all()
+        # Проходим по всем интервалам работы курьера и формируем условия:
+        time_conditions = []
+        for interval in courier_working_hours:
+            time_conditions.append(
+                Q(
+                    Q(order__delivery_hours__start__lt=interval.end) &
+                    Q(order__delivery_hours__end__gt=interval.start)
+                )
+            )
+        # Отфильтровываем заказы, не подходящие по новым параметрам:
+        unsuitable_orders = instance.assigned_orders.exclude(
+            Q(order__weight__lte=instance.max_weights[instance.courier_type]),
+            Q(order__region__in=instance.regions.all()),
+            reduce(operator.or_, time_conditions)
+        )
+        # Сбрасываем назначение у ранее назначенных заказов:
+        Order.objects.filter(assignedorder__in=unsuitable_orders).update(
+            is_assigned=False
+        )
+        # Удаляем неподходящие заказы из таблицы назначенных заказов:
+        unsuitable_orders.delete()
+        return instance
+
+
+class CourierInfoSerializer(CourierUpdateSerializer):
+    rating = serializers.SerializerMethodField()
+    earnings = serializers.SerializerMethodField()
+
+    def get_rating(self, obj):
+        t = 800
+        rating = (60 * 60 - min(t, 60 * 60)) / (60 * 60) * 5
+        return round(rating, 2)
+
+    def get_earnings(self, courier):
+        earning_data = (
+            courier.assigned_orders.filter(is_competed=True)
+            .aggregate(earning=Sum('payment'))
+        )
+        print(earning_data)
+        return earning_data['earning'] or 0
+
+    class Meta:
+        model = Courier
+        fields = (
+            'courier_id',
+            'courier_type',
+            'regions',
+            'working_hours',
+            'rating',
+            'earnings'
+        )
+
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -181,6 +257,55 @@ class OrderDataSerializer(serializers.Serializer):
         return {'orders': orders}
 
 
+class CompleteOrderSerializer(serializers.Serializer):
+    """
+    Сериализатор для выполненных заказов
+    """
+    courier_id = serializers.IntegerField(write_only=True)
+    order_id = serializers.IntegerField()
+    complete_time = serializers.DateTimeField(write_only=True)
+
+    class Meta:
+        fields = ('courier_id', 'order_id', 'complete_time')
+
+    def validate(self, attrs):
+        if not AssignedOrder.objects.filter(
+            courier_id=attrs['courier_id'],
+            order_id=attrs['order_id'],
+            is_competed=False
+        ).exists():
+            raise serializers.ValidationError(
+                detail='Assigned order not found'
+            )
+
+        return attrs
+
+    @staticmethod
+    def calculate_payment(courier_id):
+        courier_type_coeffs = {
+            'foot': 2,
+            'bike': 5,
+            'car': 9
+        }
+        base_payment = 500
+        courier = Courier.objects.get(courier_id=courier_id)
+        payment = courier_type_coeffs.get(courier.courier_type) * base_payment
+        return payment
+
+    def create(self, validated_data):
+        courier_id = validated_data['courier_id']
+        order_id = validated_data['order_id']
+        complete_time = validated_data['complete_time']
+        completed_order = AssignedOrder.objects.filter(order_id=order_id)
+        payment = self.calculate_payment(courier_id)
+        completed_order.update(
+            is_competed=True,
+            complete_time=complete_time,
+            payment=payment
+        )
+        return {'order_id': order_id}
+
+
 class AssignedOrderSerializer(serializers.ModelSerializer):
     """
     Сериализатор для назначенных заказов,
@@ -192,7 +317,7 @@ class AssignedOrderSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = OrderAssign
+        model = AssignedOrder
         fields = ('id',)
 
 
@@ -262,7 +387,7 @@ class OrderAssignSerializer(serializers.Serializer):
         # В цикле проходим по подходящим заказам,
         # создаем новый объект OrderAssign
         for order in suitable_orders:
-            new_assigned_order = OrderAssign.objects.create(
+            new_assigned_order = AssignedOrder.objects.create(
                 courier=courier,
                 order=order,
                 assign_time=assign_time

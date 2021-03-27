@@ -27,18 +27,22 @@ class TimeInterval(models.Model):
 
 
 class Courier(models.Model):
+    max_weights = {
+        'foot': 10,
+        'bike': 15,
+        'car': 50
+    }
 
     class Transport(models.TextChoices):
-        FOOT = 'foot'
-        BIKE = 'bike'
-        CAR = 'car'
+        FOOT = 'foot', '10'
+        BIKE = 'bike', '15'
+        CAR = 'car', '50'
 
     courier_id = models.PositiveIntegerField(primary_key=True)
     courier_type = models.CharField(
         max_length=4,
-        choices=Transport.choices,
+        choices=Transport.choices
     )
-
     regions = models.ManyToManyField(Region)
     working_hours = models.ManyToManyField(TimeInterval)
 
@@ -58,10 +62,11 @@ class Order(models.Model):
         return f'Order({self.id=}, {self.weight=}, {self.region}, {self.delivery_hours.all()}, {self.is_assigned}'
 
 
-class OrderAssign(models.Model):
+class AssignedOrder(models.Model):
     courier = models.ForeignKey(
         Courier,
         on_delete=models.CASCADE,
+        related_name='assigned_orders'
     )
     order = models.OneToOneField(
         Order,
@@ -71,4 +76,5 @@ class OrderAssign(models.Model):
     assign_time = models.DateTimeField()
     complete_time = models.DateTimeField(null=True, blank=True)
     is_competed = models.BooleanField(default=False)
+    payment = models.IntegerField(null=True, blank=True)
 
