@@ -1,16 +1,13 @@
-from rest_framework import serializers
-# from rest_framework.exceptions import ValidationError
-from rest_framework.validators import UniqueValidator
-from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Courier, TimeInterval, Region, Order, AssignedOrder
-from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
-from drf_writable_nested.serializers import WritableNestedModelSerializer
-import datetime
-from functools import reduce
 import operator
+from datetime import datetime
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q, Sum
 from django.utils import timezone
-from django.db.models import Sum
+from functools import reduce
+from .models import Courier, TimeInterval, Region, Order, AssignedOrder
 
 
 class RegionRelatedField(serializers.PrimaryKeyRelatedField):
@@ -36,6 +33,9 @@ class TimeIntervalRelatedField(serializers.SlugRelatedField):
     def to_internal_value(self, data):
         queryset = self.get_queryset()
         try:
+            start, end = data.split('-')
+            datetime.strptime(start, '%H:%M')
+            datetime.strptime(end, '%H:%M')
             return queryset.get(**{self.slug_field: data})
         except ObjectDoesNotExist:
             return queryset.create(**{self.slug_field: data})
@@ -44,7 +44,10 @@ class TimeIntervalRelatedField(serializers.SlugRelatedField):
 
 
 class CourierCreateSerializer(serializers.ModelSerializer):
-
+    """
+    Сериализатор используется как вложенный при создании курьеров.
+    Возвращает id созданного курьера.
+    """
     regions = RegionRelatedField(
         many=True,
         queryset=Region.objects.all(),
@@ -143,6 +146,14 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
             },
         }
 
+    def validate(self, attrs):
+        unknown_fields = set(self.initial_data) - set(self.fields)
+        if unknown_fields or 'courier_id' in self.initial_data:
+            raise ValidationError(
+                f'Unknown field(s): {", ".join(unknown_fields)}'
+            )
+        return attrs
+
     def update(self, instance, validated_data):
         super().update(instance, validated_data)
         courier_working_hours = instance.working_hours.all()
@@ -171,10 +182,14 @@ class CourierUpdateSerializer(serializers.ModelSerializer):
 
 
 class CourierInfoSerializer(CourierUpdateSerializer):
+    """
+    Сериализатор, возвращающий информацию о курьере.
+    Вычисляет два поля, rating и earnings
+    """
     rating = serializers.SerializerMethodField()
     earnings = serializers.SerializerMethodField()
 
-    def get_rating(self, obj):
+    def get_rating(self, courier):
         t = 800
         rating = (60 * 60 - min(t, 60 * 60)) / (60 * 60) * 5
         return round(rating, 2)
@@ -201,6 +216,10 @@ class CourierInfoSerializer(CourierUpdateSerializer):
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания заказа, используется как вложенный в
+    OrderDataSerializer
+    """
     order_id = serializers.IntegerField(
         min_value=1,
         validators=[UniqueValidator(queryset=Order.objects.all())],
@@ -243,6 +262,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
 
 class OrderDataSerializer(serializers.Serializer):
+    """
+    Сериализатор для создания заказов,
+    Данные о заказах находятся в списке по ключу "data"
+    Возвращает список созданных заказов в ключе "orders"
+    """
     data = OrderCreateSerializer(many=True, write_only=True)
     orders = OrderCreateSerializer(many=True, read_only=True)
 
@@ -401,5 +425,3 @@ class OrderAssignSerializer(serializers.Serializer):
         if assigned_orders:
             result.update(assign_time=assign_time)
         return result
-
-
