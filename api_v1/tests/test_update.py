@@ -66,5 +66,9 @@ class CouriersTests(APITestCase):
             'bar': 'Foo'
         }
 
-        response = self.client.patch(update_url, invalid_update_data, format='json')
+        response = self.client.patch(
+            update_url,
+            invalid_update_data,
+            format='json'
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
