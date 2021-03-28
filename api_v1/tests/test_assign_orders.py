@@ -57,7 +57,7 @@ class AssignTests(APITestCase):
         self.assertEqual(response.data['orders'], success_data)
         print(response.data)
         print('-'*80)
-        # Проверка на идемпотентность:
-        response2 = self.client.post(url, data, format='json')
-        self.assertEqual(response2.data['orders'], success_data)
-        print(response2.data)
+        # # Проверка на идемпотентность:
+        # response2 = self.client.post(url, data, format='json')
+        # self.assertEqual(response2.data['orders'], success_data)
+        # print(response2.data)
