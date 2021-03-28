@@ -8,6 +8,24 @@ from .serializers import (
     )
 
 
+def _form_validations_response(serializer, request, model):
+    """
+    Костыль для того, чтобы в случае ошибок валидации вернуть id с
+    некорректными данными.
+    """
+    unvalidated_ids = []
+    validations_errors = serializer.errors.get('data')
+    for i, error in enumerate(validations_errors):
+        if error and isinstance(error, dict):
+            try:
+                wrong_id = request.data['data'][i][f'{model}_id']
+                unvalidated_ids.append({'id': wrong_id})
+            except (KeyError, TypeError):
+                unvalidated_ids = 'incorrect data'
+    error_response = {'validation_error': {f'{model}s': unvalidated_ids}}
+    return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
+
+
 class CouriersViewSet(viewsets.ModelViewSet):
     queryset = Courier.objects.all()
     http_method_names = ['post', 'patch', 'get']
@@ -27,6 +45,12 @@ class CouriersViewSet(viewsets.ModelViewSet):
         return serializers.get(self.action, CourierDataSerializer)
 
     def create(self, request, *args, **kwargs):
+        """
+        Создает курьеров из списка, переданного в ключе "data".
+        Возвращает словарь, по ключу "couriers" находится список словарей с id
+        созданных курьеров.
+        В случае ошибок валидации вернет id курьеров с ошибочным данными.
+        """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             self.perform_create(serializer)
@@ -37,17 +61,7 @@ class CouriersViewSet(viewsets.ModelViewSet):
                 headers=headers
             )
 
-        unvalidated_ids = []
-        validations_errors = serializer.errors.get('data')
-        for i, error in enumerate(validations_errors):
-            if error and isinstance(error, dict):
-                try:
-                    wrong_id = request.data['data'][i]['courier_id']
-                except KeyError:
-                    wrong_id = 'no courier_id was passed '
-                unvalidated_ids.append({'id': wrong_id})
-        error_response = {'validation_error': {'couriers': unvalidated_ids}}
-        return Response(error_response, status=status.HTTP_400_BAD_REQUEST,)
+        return _form_validations_response(serializer, request, 'courier')
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
@@ -68,6 +82,12 @@ class OrdersViewSet(viewsets.ModelViewSet):
         return serializers.get(self.action, OrderDataSerializer)
 
     def create(self, request, *args, **kwargs):
+        """
+        Создает заказы из списка, переданного в ключе "data".
+        Возвращает словарь, по ключу "orders" находится список словарей с id
+        созданных заказов.
+        В случае ошибок валидации вернет id заказов с ошибочным данными.
+        """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             self.perform_create(serializer)
@@ -78,17 +98,7 @@ class OrdersViewSet(viewsets.ModelViewSet):
                 headers=headers
             )
 
-        unvalidated_ids = []
-        validations_errors = serializer.errors.get('data')
-        for i, error in enumerate(validations_errors):
-            if error and isinstance(error, dict):
-                try:
-                    wrong_id = request.data['data'][i]['order_id']
-                except KeyError:
-                    wrong_id = 'no order_id was passed '
-                unvalidated_ids.append({'id': wrong_id})
-        error_response = {'validation_error': {'orders': unvalidated_ids}}
-        return Response(error_response, status=status.HTTP_400_BAD_REQUEST,)
+        return _form_validations_response(serializer, request, 'order')
 
     @action(methods=['post'], detail=False)
     def assign(self, request, *args, **kwargs):

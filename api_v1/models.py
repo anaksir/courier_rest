@@ -58,9 +58,6 @@ class Order(models.Model):
     delivery_hours = models.ManyToManyField(TimeInterval)
     is_assigned = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f'Order({self.id=}, {self.weight=}, {self.region}, {self.delivery_hours.all()}, {self.is_assigned}'
-
 
 class AssignedOrder(models.Model):
     courier = models.ForeignKey(

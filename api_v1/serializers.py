@@ -370,12 +370,6 @@ class OrderAssignSerializer(serializers.Serializer):
         """
         Назначает заказы курьеру
         """
-        courier_max_weight = {
-            'foot': 10,
-            'bike': 15,
-            'car': 50
-        }
-
         courier = validated_data.pop('courier_id')
         courier_working_hours = courier.working_hours.all()
 
@@ -403,7 +397,7 @@ class OrderAssignSerializer(serializers.Serializer):
         suitable_orders = Order.objects.filter(
             Q(region__in=courier.regions.all()),
             Q(is_assigned=False),
-            Q(weight__lte=courier_max_weight[courier.courier_type]),
+            Q(weight__lte=courier.max_weights[courier.courier_type]),
             reduce(operator.or_, time_conditions)
         )
         assigned_orders = []
@@ -418,8 +412,14 @@ class OrderAssignSerializer(serializers.Serializer):
 
             )
             assigned_orders.append(new_assigned_order)
-
+        # Для назначенных заказов записываем признак 'is_assigned=True',
+        # чтобы они не были назначены другому курьеру
         suitable_orders.update(is_assigned=True)
+        # Фильтруем назначенные на курьера, но не выполненные заказы,
+        # для использования в ответе:
+        assigned_to_courier = courier.assigned_orders.filter(
+            is_competed=False
+        )
         result = {'orders': assigned_orders}
         # Если заказы назначены, в ответ добавить время назначения
         if assigned_orders:

@@ -10,5 +10,3 @@ router.register(r'orders', views.OrdersViewSet, basename='orders')
 urlpatterns = [
     path('', include(router.urls)),
 ]
-
-print(urlpatterns)
