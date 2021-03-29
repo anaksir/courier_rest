@@ -72,6 +72,7 @@ class AssignedOrder(models.Model):
     )
     assign_time = models.DateTimeField()
     complete_time = models.DateTimeField(null=True, blank=True)
+    delivery_time = models.DurationField(null=True, blank=True)
     is_competed = models.BooleanField(default=False)
     payment = models.IntegerField(null=True, blank=True)
 
