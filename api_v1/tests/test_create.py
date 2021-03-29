@@ -1,7 +1,6 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework.response import Response
 from ..models import Courier, Order
 
 
@@ -9,12 +8,8 @@ class CouriersTests(APITestCase):
     """
     Проверка создания курьеров POST /couriers.
     """
-    def test_create_couriers(self):
-        """
-        Проверка создания валидных курьеров.
-        """
-        url = reverse('couriers-list')
-        data = {
+    def setUp(self):
+        self.valid_data = {
             "data": [
                 {
                     "courier_id": 1,
@@ -36,31 +31,8 @@ class CouriersTests(APITestCase):
                 }
             ]
         }
-
-        response_data = {"couriers": [{"id": 1}, {"id": 2}, {"id": 3}]}
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_201_CREATED,
-            'Проверка статуса ответа HTTP_201_CREATED'
-        )
-        self.assertEqual(
-            Courier.objects.count(),
-            3,
-            'Проверка, что создано 3 курера'
-        )
-        self.assertEqual(
-            response.data,
-            response_data,
-            'Проверка данных ответа'
-        )
-
-    def test_create_invalid_couriers(self):
-        """
-        Проверка ответа при невалидных данных
-        """
-        url = reverse('couriers-list')
-        data = {
+        self.valid_response = {"couriers": [{"id": 1}, {"id": 2}, {"id": 3}]}
+        self.invalid_data = {
             "data": [
                 {
                     "courier_id": 1,
@@ -88,28 +60,36 @@ class CouriersTests(APITestCase):
                 }
             ]
         }
-
-        response_data = {
-            "validation_error": {
-                "couriers": [{"id": 1}, {"id": 3}, {"id": 4}]
-            }
+        self.invalid_response = {
+            "validation_error": {"couriers": [{"id": 1}, {"id": 3}, {"id": 4}]}
         }
 
-        response = self.client.post(url, data, format='json')
+    def test_create_couriers(self):
+        """
+        Проверка создания валидных курьеров.
+        """
+        url = reverse('couriers-list')
+        response = self.client.post(url, self.valid_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Courier.objects.count(), 3)
+        self.assertEqual(response.data, self.valid_response)
+
+    def test_create_invalid_couriers(self):
+        """
+        Проверка ответа при невалидных данных
+        """
+        url = reverse('couriers-list')
+        response = self.client.post(url, self.invalid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, Response(response_data).data)
+        self.assertEqual(response.data, self.invalid_response)
 
 
 class OrderTests(APITestCase):
     """
-    Проверка создания курьеров POST /couriers.
+    Проверка создания заказов POST /orders.
     """
-    def test_create_couriers(self):
-        """
-        Проверка создания валидных заказов.
-        """
-        url = reverse('orders-list')
-        data = {
+    def setUp(self):
+        self.valid_data = {
             "data": [
                 {
                     "order_id": 1,
@@ -125,31 +105,8 @@ class OrderTests(APITestCase):
                 }
             ]
         }
-
-        response_data = {"orders": [{"id": 1}, {"id": 2}]}
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_201_CREATED,
-            'Проверка статуса ответа HTTP_201_CREATED'
-        )
-        self.assertEqual(
-            Order.objects.count(),
-            2,
-            'Проверка, что создано 2 заказа'
-        )
-        self.assertEqual(
-            response.data,
-            response_data,
-            'Проверка данных ответа'
-        )
-
-    def test_create_invalid_couriers(self):
-        """
-        Проверка ответа при невалидных данных
-        """
-        url = reverse('orders-list')
-        data = {
+        self.valid_response = {"orders": [{"id": 1}, {"id": 2}]}
+        self.invalid_data = {
             "data": [
                 {
                     "order_id": 1,
@@ -165,13 +122,25 @@ class OrderTests(APITestCase):
                 }
             ]
         }
-
-        response_data = {
-            "validation_error": {
-                "orders": [{"id": 1}, {"id": 2}]
-            }
+        self.invalid_response = {
+            "validation_error": {"orders": [{"id": 1}, {"id": 2}]}
         }
 
-        response = self.client.post(url, data, format='json')
+    def test_create_orders(self):
+        """
+        Проверка создания валидных заказов.
+        """
+        url = reverse('orders-list')
+        response = self.client.post(url, self.valid_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Order.objects.count(), 2)
+        self.assertEqual(response.data, self.valid_response)
+
+    def test_create_invalid_orders(self):
+        """
+        Проверка ответа при невалидных данных
+        """
+        url = reverse('orders-list')
+        response = self.client.post(url, self.invalid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, Response(response_data).data)
+        self.assertEqual(response.data, self.invalid_response)

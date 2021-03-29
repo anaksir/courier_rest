@@ -238,7 +238,6 @@ class CourierInfoSerializer(CourierUpdateSerializer):
             courier.assigned_orders.filter(is_competed=True)
             .aggregate(earning=Sum('payment'))
         )
-        print(earning_data)
         return earning_data['earning'] or 0
 
     class Meta:
@@ -382,9 +381,6 @@ class CompleteOrderSerializer(serializers.Serializer):
             .order_by('-complete_time')
             .first()
         )
-        print('-'*80)
-        print(previous_order)
-        print('-' * 80)
         if previous_order:
             previous_time = previous_order.complete_time
         else:
