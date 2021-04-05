@@ -1,0 +1,621 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /couriers:
+    get:
+      operationId: couriers_list
+      description: ''
+      tags:
+      - couriers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CourierData'
+          description: ''
+    post:
+      operationId: couriers_create
+      description: |-
+        Создает курьеров из списка, переданного в ключе "data".
+        Возвращает словарь, по ключу "couriers" находится список словарей с id
+        созданных курьеров.
+        В случае ошибок валидации вернет id курьеров с ошибочным данными.
+      tags:
+      - couriers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourierData'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourierData'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourierData'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourierData'
+          description: ''
+  /couriers/{courier_id}:
+    get:
+      operationId: couriers_retrieve
+      description: ''
+      parameters:
+      - in: path
+        name: courier_id
+        schema:
+          type: integer
+        description: A unique value identifying this courier.
+        required: true
+      tags:
+      - couriers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourierInfo'
+          description: ''
+    patch:
+      operationId: couriers_partial_update
+      description: ''
+      parameters:
+      - in: path
+        name: courier_id
+        schema:
+          type: integer
+        description: A unique value identifying this courier.
+        required: true
+      tags:
+      - couriers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourierUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourierUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourierUpdate'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourierUpdate'
+          description: ''
+  /orders:
+    post:
+      operationId: orders_create
+      description: |-
+        Создает заказы из списка, переданного в ключе "data".
+        Возвращает словарь, по ключу "orders" находится список словарей с id
+        созданных заказов.
+        В случае ошибок валидации вернет id заказов с ошибочным данными.
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderData'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderData'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderData'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderData'
+          description: ''
+  /orders/assign:
+    post:
+      operationId: orders_assign_create
+      description: Endpoint для назначения курьеру подходящих заказов
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderAssign'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderAssign'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderAssign'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderAssign'
+          description: ''
+  /orders/complete:
+    post:
+      operationId: orders_complete_create
+      description: Endpoint для отметки о выполнении заказа
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CompleteOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CompleteOrder'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteOrder'
+          description: ''
+  /schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+components:
+  schemas:
+    AssignedOrder:
+      type: object
+      description: |-
+        Сериализатор для возврата назначенных заказов,
+        используется в OrderAssignSerializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+      required:
+      - id
+    CompleteOrder:
+      type: object
+      description: Сериализатор для выполненных заказов
+      properties:
+        courier_id:
+          type: integer
+          writeOnly: true
+          description: ID of an existing courier
+        order_id:
+          type: integer
+          description: ID of an existing order, assigned to courier
+        complete_time:
+          type: string
+          format: date-time
+          writeOnly: true
+          description: Order completion time, format ISO 8601
+      required:
+      - complete_time
+      - courier_id
+      - order_id
+    CourierCreate:
+      type: object
+      description: |-
+        Сериализатор используется как вложенный при создании курьеров.
+        Возвращает id созданного курьера.
+      properties:
+        courier_id:
+          type: integer
+          minimum: 1
+          writeOnly: true
+          description: Unique ID for courier, must be integer > 0
+        courier_type:
+          allOf:
+          - $ref: '#/components/schemas/CourierTypeEnum'
+          writeOnly: true
+          description: Transport for courier, may be either foot, bike or car
+        working_hours:
+          type: array
+          items:
+            type: string
+            writeOnly: true
+          writeOnly: true
+          description: 'Working hours, array of string with format: "HH:MM-HH:MM"'
+        regions:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+          description: 'Working regions, array of integer, must be > 0 '
+        id:
+          type: integer
+          readOnly: true
+          description: id of created courier
+      required:
+      - courier_id
+      - courier_type
+      - id
+      - regions
+      - working_hours
+    CourierData:
+      type: object
+      description: |-
+        Сериализатор для создания курьеров,
+        Данные о курьерах находятся в списке по ключу "data"
+        Возвращает список созданных курьеров в ключе "couriers"
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourierCreate'
+          writeOnly: true
+        couriers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourierCreate'
+          readOnly: true
+      required:
+      - couriers
+      - data
+    CourierInfo:
+      type: object
+      description: |-
+        Сериализатор, возвращающий информацию о курьере.
+        Вычисляет два поля, rating и earnings
+      properties:
+        courier_id:
+          type: integer
+        courier_type:
+          $ref: '#/components/schemas/CourierTypeEnum'
+        regions:
+          type: array
+          items:
+            type: integer
+          description: 'Working regions, array of integer, must be > 0 '
+        working_hours:
+          type: array
+          items:
+            type: string
+          description: 'Working hours, array of string with format: "HH:MM-HH:MM"'
+        rating:
+          type: string
+          readOnly: true
+          description: Rating of courier
+        earnings:
+          type: string
+          readOnly: true
+          description: Total payment
+      required:
+      - courier_id
+      - courier_type
+      - earnings
+      - rating
+      - regions
+      - working_hours
+    CourierTypeEnum:
+      enum:
+      - foot
+      - bike
+      - car
+      type: string
+    CourierUpdate:
+      type: object
+      description: |-
+        Сериализатор для обновления курьеров.
+        Возвращает актуальные данные.
+        В методе 'update' реализовано снятие с курьера заказов, которые ему
+        больше не подходят.
+      properties:
+        courier_id:
+          type: integer
+          readOnly: true
+        courier_type:
+          $ref: '#/components/schemas/CourierTypeEnum'
+        working_hours:
+          type: array
+          items:
+            type: string
+          description: 'Working hours, array of string with format: "HH:MM-HH:MM"'
+        regions:
+          type: array
+          items:
+            type: integer
+          description: 'Working regions, array of integer, must be > 0 '
+      required:
+      - courier_id
+      - courier_type
+      - regions
+      - working_hours
+    OrderAssign:
+      type: object
+      properties:
+        courier_id:
+          type: integer
+          writeOnly: true
+          description: ID of existing courier
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignedOrder'
+          readOnly: true
+          description: 'Array on assigned orders, format {id: int}'
+        assign_time:
+          type: string
+          format: date-time
+          readOnly: true
+          description: 'Time of assignment of orders '
+      required:
+      - assign_time
+      - courier_id
+      - orders
+    OrderCreate:
+      type: object
+      description: |-
+        Сериализатор для создания заказа, используется как вложенный в
+        OrderDataSerializer
+      properties:
+        order_id:
+          type: integer
+          minimum: 1
+          writeOnly: true
+          description: Unique ID for order, must be integer > 0
+        weight:
+          type: string
+          format: decimal
+          maximum: 50
+          minimum: 0.009
+          writeOnly: true
+          description: Weight of order, from 0.01 to 50
+        region:
+          type: integer
+          writeOnly: true
+          description: Delivery region, must be integer > 0
+        delivery_hours:
+          type: array
+          items:
+            type: string
+            writeOnly: true
+          writeOnly: true
+          description: 'Delivery time, array of string with format: "HH:MM-HH:MM"'
+        id:
+          type: integer
+          readOnly: true
+      required:
+      - delivery_hours
+      - id
+      - order_id
+      - region
+      - weight
+    OrderData:
+      type: object
+      description: |-
+        Сериализатор для создания заказов,
+        Данные о заказах находятся в списке по ключу "data"
+        Возвращает список созданных заказов в ключе "orders"
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderCreate'
+          writeOnly: true
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderCreate'
+          readOnly: true
+      required:
+      - data
+      - orders
+    PatchedCourierUpdate:
+      type: object
+      description: |-
+        Сериализатор для обновления курьеров.
+        Возвращает актуальные данные.
+        В методе 'update' реализовано снятие с курьера заказов, которые ему
+        больше не подходят.
+      properties:
+        courier_id:
+          type: integer
+          readOnly: true
+        courier_type:
+          $ref: '#/components/schemas/CourierTypeEnum'
+        working_hours:
+          type: array
+          items:
+            type: string
+          description: 'Working hours, array of string with format: "HH:MM-HH:MM"'
+        regions:
+          type: array
+          items:
+            type: integer
+          description: 'Working regions, array of integer, must be > 0 '
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: Session
